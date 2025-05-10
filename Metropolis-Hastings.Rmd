@@ -1,9 +1,14 @@
 
 ---
 title: "Metropolis-Hastings Algorithm Demo"
-output: html_document
+author: "Ethan Smith"
+output: 
+  html_document: 
+    theme: cerulean
+    code_folding: hide
+editor_options: 
+  chunk_output_type: inline
 ---
-
 
 
 ## Introduction 
