@@ -1,0 +1,106 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Introduction 
+
+The **Metropolis_Hastings algorithm** is a Markov Chain Monte Carlo method for generating samples from a target distribution when direct sampling is difficult. It constructs a Markov chain that has the target distribution as its stationary distribution.
+
+
+For this project, we implment a 2-dimensional version of the algorithm, targetting a bivariate distribution. 
+
+\[
+f(a, b) \propto \exp(-2a^2 - 2ab - b^2)
+\]
+
+Since this isnt a standard distribution we use Marcov Chain Monte Carlo to approximate samples from it. 
+
+
+
+```{r}
+# Load required packages
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse)
+
+# Target density (up to normalizing constant)
+target <- function(a, b) {
+  exp(-2 * a^2 - 2 * a * b - b^2)
+}
+
+# Symmetric bivariate normal proposal density
+candidate <- function(a1, b1, a_mean, b_mean, var) {
+  dnorm(a1, a_mean, sqrt(var)) * dnorm(b1, b_mean, sqrt(var))
+}
+
+# Set seed for reproducibility
+set.seed(25)
+
+# Initialize parameters
+candidate_variance <- 1.5^2
+num_reps <- 10^5
+previous_x <- 2
+previous_y <- -1
+
+# Storage for output
+df <- data.frame(draw = integer(),
+                 previous_x = numeric(),
+                 previous_y = numeric(),
+                 candidate_x = numeric(),
+                 candidate_y = numeric(),
+                 alpha = numeric(),
+                 u = numeric(),
+                 accept = character(),
+                 retained_x = numeric(),
+                 retained_y = numeric())
+
+# First iteration values
+retained_x <- previous_x
+retained_y <- previous_y
+
+# Main Metropolis-Hastings loop
+for (i in 1:num_reps) {
+  candidate_x <- rnorm(1, previous_x, sqrt(candidate_variance))
+  candidate_y <- rnorm(1, previous_y, sqrt(candidate_variance))
+
+  # Calculate acceptance ratio
+  alpha <- min(1,
+               target(candidate_x, candidate_y) / target(previous_x, previous_y))
+
+  u <- runif(1)
+  accept <- ifelse(u < alpha, "Yes", "No")
+
+  if (u < alpha) {
+    retained_x <- candidate_x
+    retained_y <- candidate_y
+  } else {
+    retained_x <- previous_x
+    retained_y <- previous_y
+  }
+
+  # Save iteration results
+  df <- df %>% add_row(
+    draw = i,
+    previous_x = previous_x,
+    previous_y = previous_y,
+    candidate_x = candidate_x,
+    candidate_y = candidate_y,
+    alpha = alpha,
+    u = u,
+    accept = accept,
+    retained_x = retained_x,
+    retained_y = retained_y
+  )
+
+  # Update for next iteration
+  previous_x <- retained_x
+  previous_y <- retained_y
+
+  if (i %% 10000 == 0) print(paste("Completed iteration:", i))
+}
+
+# Preview the first few rows
+head(df)
+
+```
+
