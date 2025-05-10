@@ -193,11 +193,16 @@ ggplot(post_burn, aes(x = x, y = y)) +
 
 In this notebook, we successfully implemented the Metropolis-Hastings algorithm to simulate samples from a complex bivariate distribution. The project demonstrates:
 
+
 Core logic of MCMC
 
-Effective use of loops, lists, and data frames in R
+Uses at least 5 data types (numeric, character, logical, data frame, function)
 
-Saving and reloading data from CSV
+Uses a loop with a list
+
+Displays output to screen
+
+Writes/reads from a CSV file (stretch challenge)
 
 Meaningful statistical summaries
 
