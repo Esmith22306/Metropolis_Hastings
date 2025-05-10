@@ -1,7 +1,9 @@
+
 ---
 title: "Metropolis-Hastings Algorithm Demo"
 output: html_document
 ---
+
 
 
 ## Introduction 
@@ -103,7 +105,10 @@ for (i in 1:iterations) {
     print(msg)
   }
 }
+```
 
+
+```{r}
 
 # Convert to dataframe
 mh_df <- bind_rows(samples)
@@ -132,6 +137,12 @@ mean(post_burn$y > 2)
 # Estimate P(x * y < 0)
 mean(post_burn$x * post_burn$y < 0)
 
+
+```
+
+
+
+```{r}
 # 2D Density Plot
 ggplot(post_burn, aes(x = x, y = y)) +
   stat_density_2d(aes(fill = ..level..), geom = "polygon", color = "white") +
