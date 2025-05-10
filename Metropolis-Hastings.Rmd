@@ -1,8 +1,6 @@
 ---
-title: "R Notebook"
-output:
-  html_document:
-    df_print: paged
+title: "Metropolis-Hastings Algorithm Demo"
+output: html_document:
 ---
 
 ## Introduction 
@@ -10,7 +8,7 @@ output:
 The **Metropolis_Hastings algorithm** is a Markov Chain Monte Carlo method for generating samples from a target distribution when direct sampling is difficult. It constructs a Markov chain that has the target distribution as its stationary distribution.
 
 
-For this project, we implment a 2-dimensional version of the algorithm, targeting a bivariate distribution. 
+For this project, we implement a 2-dimensional version of the algorithm, targeting a bivariate distribution. 
 
 \[
 f(a, b) \propto \exp(-2a^2 - 2ab - b^2)
@@ -19,124 +17,108 @@ f(a, b) \propto \exp(-2a^2 - 2ab - b^2)
 Since this isn't a standard distribution we use Markov Chain Monte Carlo to approximate samples from it. 
 
 
+## Method
+
+Describe the components:
+- Target distribution
+- Proposal distribution
+- Acceptance probability
+- Data types used
+
+
+## R Implementation
 
 ```{r}
-
-# Load required packages
+# Read in required packages
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyverse)
-
-# Target density (unnormalized)
-target <- function(a, b) {
-  exp(-2 * a^2 - 2 * a * b - b^2)
+# Define functions
+target <- function(a, b){ exp(-2 * a^2 - 2 * a * b - b^2) }
+candidate <- function(a1, b1, a_mean, b_mean, var) {
+dnorm(a1, a_mean, sqrt(var)) * dnorm(b1, b_mean, sqrt(var))
 }
-
-# Seed for reproducibility
-set.seed(25)
-
-# Parameters
-candidate_variance <- 1.5^2
-num_reps <- 10000  # Reduced for quick screen output
-previous_x <- 2
+# Initialize values
+set.seed(seed <- 25) # Random number seed
+candidate_variance <- 1.5^2 # Marginal variance of candidate distribution
+num_reps <- 10^5 # Number of values to simulate
+previous_x <- 2 # Initial value
 previous_y <- -1
-
-# Data types used:
-# - numeric: candidate_x, alpha
-# - character: accept
-# - logical: u < alpha
-# - list: coordinate list
-# - dataframe: df
-
-# Initialize dataframe
-df <- data.frame(draw = integer(),
-                 previous_x = numeric(),
-                 previous_y = numeric(),
-                 candidate_x = numeric(),
-                 candidate_y = numeric(),
-                 alpha = numeric(),
-                 u = numeric(),
-                 accept = character(),
-                 retained_x = numeric(),
-                 retained_y = numeric())
-
-# Initialize acceptance counter (numeric)
-accept_count <- 0
-
-# Run Metropolis-Hastings
-for (i in 1:num_reps) {
-  candidate_x <- rnorm(1, previous_x, sqrt(candidate_variance))
-  candidate_y <- rnorm(1, previous_y, sqrt(candidate_variance))
-
-  alpha <- min(1, target(candidate_x, candidate_y) / target(previous_x, previous_y))
-
-  u <- runif(1)
-  accepted <- u < alpha
-  accept <- ifelse(accepted, "Yes", "No")
-
-  if (accepted) {
-    retained_x <- candidate_x
-    retained_y <- candidate_y
-    accept_count <- accept_count + 1
-  } else {
-    retained_x <- previous_x
-    retained_y <- previous_y
-  }
-
-  df <- df %>% add_row(
-    draw = i,
-    previous_x = previous_x,
-    previous_y = previous_y,
-    candidate_x = candidate_x,
-    candidate_y = candidate_y,
-    alpha = alpha,
-    u = u,
-    accept = accept,
-    retained_x = retained_x,
-    retained_y = retained_y
-  )
-
-  previous_x <- retained_x
-  previous_y <- retained_y
-
-  if (i %% 2000 == 0) print(paste("Iteration", i, "complete"))
+df <- data.frame(draw = 0,
+previous_x = previous_x, previous_y = previous_y,
+candidate_x = NA, candidate_y = NA, alpha = NA, u = NA, accept = NA,
+retained_x = previous_x, retained_y = previous_y)
+# Loop to complete as many iterations as desired
+for (i in c(1:num_reps)){
+draw <- i
+candidate_x <- rnorm(1, previous_x, sqrt(candidate_variance))
+candidate_y <- rnorm(1, previous_y, sqrt(candidate_variance))
+alpha <- min( 1,
+target(candidate_x, candidate_y) / target(previous_x, previous_y) *
+candidate(previous_x,previous_y,candidate_x,candidate_y,candidate_variance) /
+candidate(candidate_x,candidate_y,previous_x,previous_y,candidate_variance)
+)
+u <- runif(1)
+accept <- ifelse(u < alpha, "Yes", "No")
+if (u < alpha) {
+retained_x <- candidate_x; retained_y <- candidate_y
+} else {
+retained_x <- previous_x; retained_y <- previous_y
+}
+df <- df %>%
+bind_rows(data.frame(draw, previous_x, previous_y, candidate_x, candidate_y,
+alpha, u, accept, retained_x, retained_y))
+previous_x <- retained_x
+previous_y <- retained_y
+if(i %% 10000 == 0){ print(i) } # To observe progress of the loop
 }
 
-# Display final acceptance rate
-accept_rate <- accept_count / num_reps
-cat("Acceptance Rate:", round(accept_rate, 4), "\n\n")
+# Set burn in
+burn_in <- 1000
+# Acceptance Rate
+df %>%
+slice(-c(1:(burn_in+1))) %>%
+group_by(accept) %>%
+summarize(n=n()) %>%
+mutate(proportion = n / sum(n))
 
-# Show summary of last few iterations
-print(tail(df, 5))
+# Set burn in
+burn_in <- 1000
+# P(a < -1 | y)
+df %>%
+slice(-c(1:(burn_in+1))) %>%
+summarize(sum = sum(retained_x < -1),
+n=n()) %>%
+mutate(proportion = sum / n)
 
-write.csv(df, "mh_samples.csv", row.names = FALSE)
-cat("CSV file saved: mh_samples.csv\n")
+# P(b > 2)
+df %>%
+slice(-c(1:(burn_in+1))) %>%
+summarize(sum = sum(retained_y > 2), n=n()) %>%
+mutate(proportion = sum / n)
+# P(ab < 0)
+df %>%
+slice(-c(1:(burn_in+1))) %>%
+summarize(sum = sum(retained_x * retained_y < 0), n=n()) %>%
+mutate(proportion = sum / n)
+# Set burn-in
+burn_in <- 1000
+# Contour plot
+# https://www.r-graph-gallery.com/2d-density-plot-with-ggplot2.html
+df %>%
+slice(-c(1:(burn_in+1))) %>%
+ggplot(aes(x=retained_x, y=retained_y) ) +
 
-
-# Load tidyverse if not already loaded
-library(tidyverse)
-
-# Scatter plot of retained samples
-ggplot(df, aes(x = retained_x, y = retained_y)) +
-  geom_point(alpha = 0.4, color = "blue") +
-  labs(title = "Metropolis-Hastings Sample Distribution",
-       x = "X values",
-       y = "Y values") +
-  theme_minimal()
+stat_density_2d(aes(fill = ..level..),
+geom = "polygon", colour="white") +
+ylab("b") +
+xlab("a") +
+labs(title = "Density Plot") +
+theme_bw() +
+theme(panel.grid.major = element_blank()) +
+theme(panel.grid.minor = element_blank()) +
+theme(legend.position = "none") +
+theme(plot.title = element_text(hjust = 0.5))
 
 ```
 
-```{r}
-# Create a list of coordinate pairs (list of numeric vectors)
-coord_list <- list(c(0, 0), c(1, 1), c(-1, -1), c(0.5, -0.5), c(2, 2))
-
-# Loop through the list to evaluate target density at each
-cat("Target values for example coordinates:\n")
-for (coord in coord_list) {
-  a <- coord[1]
-  b <- coord[2]
-  density_val <- target(a, b)
-  cat(sprintf("Target(%.2f, %.2f) = %.4f\n", a, b, density_val))
-}
-
-```
 
