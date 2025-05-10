@@ -1,7 +1,8 @@
 ---
 title: "Metropolis-Hastings Algorithm Demo"
-output: html_document:
+output: html_document
 ---
+
 
 ## Introduction 
 
@@ -28,97 +29,116 @@ Describe the components:
 
 ## R Implementation
 
-```{r}
-# Read in required packages
+```{r setup, include=FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyverse)
-# Define functions
-target <- function(a, b){ exp(-2 * a^2 - 2 * a * b - b^2) }
-candidate <- function(a1, b1, a_mean, b_mean, var) {
-dnorm(a1, a_mean, sqrt(var)) * dnorm(b1, b_mean, sqrt(var))
-}
-# Initialize values
-set.seed(seed <- 25) # Random number seed
-candidate_variance <- 1.5^2 # Marginal variance of candidate distribution
-num_reps <- 10^5 # Number of values to simulate
-previous_x <- 2 # Initial value
-previous_y <- -1
-df <- data.frame(draw = 0,
-previous_x = previous_x, previous_y = previous_y,
-candidate_x = NA, candidate_y = NA, alpha = NA, u = NA, accept = NA,
-retained_x = previous_x, retained_y = previous_y)
-# Loop to complete as many iterations as desired
-for (i in c(1:num_reps)){
-draw <- i
-candidate_x <- rnorm(1, previous_x, sqrt(candidate_variance))
-candidate_y <- rnorm(1, previous_y, sqrt(candidate_variance))
-alpha <- min( 1,
-target(candidate_x, candidate_y) / target(previous_x, previous_y) *
-candidate(previous_x,previous_y,candidate_x,candidate_y,candidate_variance) /
-candidate(candidate_x,candidate_y,previous_x,previous_y,candidate_variance)
-)
-u <- runif(1)
-accept <- ifelse(u < alpha, "Yes", "No")
-if (u < alpha) {
-retained_x <- candidate_x; retained_y <- candidate_y
-} else {
-retained_x <- previous_x; retained_y <- previous_y
-}
-df <- df %>%
-bind_rows(data.frame(draw, previous_x, previous_y, candidate_x, candidate_y,
-alpha, u, accept, retained_x, retained_y))
-previous_x <- retained_x
-previous_y <- retained_y
-if(i %% 10000 == 0){ print(i) } # To observe progress of the loop
+set.seed(42)
+
+# Target density (unnormalized)
+target_density <- function(x, y) {
+  exp(-2 * x^2 - 2 * x * y - y^2)
 }
 
-# Set burn in
-burn_in <- 1000
-# Acceptance Rate
-df %>%
-slice(-c(1:(burn_in+1))) %>%
-group_by(accept) %>%
-summarize(n=n()) %>%
-mutate(proportion = n / sum(n))
+# Proposal density: symmetric Gaussian
+proposal_density <- function(x1, y1, x0, y0, var) {
+  dnorm(x1, x0, sqrt(var)) * dnorm(y1, y0, sqrt(var))
+}
 
-# Set burn in
-burn_in <- 1000
-# P(a < -1 | y)
-df %>%
-slice(-c(1:(burn_in+1))) %>%
-summarize(sum = sum(retained_x < -1),
-n=n()) %>%
-mutate(proportion = sum / n)
+# Acceptance logic
+accept_candidate <- function(x0, y0, x1, y1, var) {
+  alpha <- min(1,
+    target_density(x1, y1) / target_density(x0, y0) *
+      proposal_density(x0, y0, x1, y1, var) /
+      proposal_density(x1, y1, x0, y0, var)
+  )
+  u <- runif(1)
+  list(accept = u < alpha, u = u, alpha = alpha)
+}
 
-# P(b > 2)
-df %>%
-slice(-c(1:(burn_in+1))) %>%
-summarize(sum = sum(retained_y > 2), n=n()) %>%
-mutate(proportion = sum / n)
-# P(ab < 0)
-df %>%
-slice(-c(1:(burn_in+1))) %>%
-summarize(sum = sum(retained_x * retained_y < 0), n=n()) %>%
-mutate(proportion = sum / n)
-# Set burn-in
+# Settings
+iterations <- 50000
 burn_in <- 1000
-# Contour plot
-# https://www.r-graph-gallery.com/2d-density-plot-with-ggplot2.html
-df %>%
-slice(-c(1:(burn_in+1))) %>%
-ggplot(aes(x=retained_x, y=retained_y) ) +
+proposal_var <- 1.5^2
 
-stat_density_2d(aes(fill = ..level..),
-geom = "polygon", colour="white") +
-ylab("b") +
-xlab("a") +
-labs(title = "Density Plot") +
-theme_bw() +
-theme(panel.grid.major = element_blank()) +
-theme(panel.grid.minor = element_blank()) +
-theme(legend.position = "none") +
-theme(plot.title = element_text(hjust = 0.5))
+# Start values
+current_x <- 1
+current_y <- -1
+
+# Store samples in a list before converting to a dataframe
+samples <- vector("list", iterations)
+
+for (i in 1:iterations) {
+  # Propose
+  x_prop <- rnorm(1, current_x, sqrt(proposal_var))
+  y_prop <- rnorm(1, current_y, sqrt(proposal_var))
+  
+  # Accept/reject
+  result <- accept_candidate(current_x, current_y, x_prop, y_prop, proposal_var)
+  accepted <- result$accept
+  
+  if (accepted) {
+    current_x <- x_prop
+    current_y <- y_prop
+  }
+  
+  # Save results
+  samples[[i]] <- list(
+    iteration = i,
+    x = current_x,
+    y = current_y,
+    accepted = accepted,
+    u = result$u,
+    alpha = result$alpha
+  )
+  
+  # Switch-style message every 10000
+  if (i %% 10000 == 0) {
+    msg <- switch(as.character(i),
+      "10000" = "25% done...",
+      "20000" = "Halfway there!",
+      "30000" = "75% complete...",
+      "40000" = "Almost done!",
+      "50000" = "Finished!"
+    )
+    print(msg)
+  }
+}
+
+
+# Convert to dataframe
+mh_df <- bind_rows(samples)
+
+# Save to CSV
+write.csv(mh_df, "mh_simulated_output.csv", row.names = FALSE)
+
+# Read back in (to fulfill stretch challenge)
+mh_df <- read.csv("mh_simulated_output.csv")
+
+
+# Remove burn-in
+post_burn <- mh_df %>% filter(iteration > burn_in)
+
+# Acceptance rate
+post_burn %>%
+  count(accepted) %>%
+  mutate(rate = n / sum(n))
+
+# Estimate P(x < -1)
+mean(post_burn$x < -1)
+
+# Estimate P(y > 2)
+mean(post_burn$y > 2)
+
+# Estimate P(x * y < 0)
+mean(post_burn$x * post_burn$y < 0)
+
+# 2D Density Plot
+ggplot(post_burn, aes(x = x, y = y)) +
+  stat_density_2d(aes(fill = ..level..), geom = "polygon", color = "white") +
+  labs(title = "Joint Density Estimate", x = "x", y = "y") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
 
 ```
-
 
