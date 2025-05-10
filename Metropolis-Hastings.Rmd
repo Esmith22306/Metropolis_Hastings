@@ -20,16 +20,40 @@ f(a, b) \propto \exp(-2a^2 - 2ab - b^2)
 Since this isn't a standard distribution we use Markov Chain Monte Carlo to approximate samples from it. 
 
 
-## Method
+---
 
-Describe the components:
-- Target distribution
-- Proposal distribution
-- Acceptance probability
-- Data types used
+## How the Metropolis-Hastings Algorithm Works
 
+The algorithm operates as follows:
+
+1. **Initialization**: Start at a point in the domain.
+2. **Proposal Step**: Generate a candidate point from a proposal distribution.
+3. **Acceptance Step**: Compute the acceptance ratio:
+
+\[
+\alpha = \min\left(1, \frac{f(\text{candidate}) \cdot q(\text{current}|\text{candidate})}{f(\text{current}) \cdot q(\text{candidate}|\text{current})}\right)
+\]
+
+Where:
+- \( f \) is the unnormalized target density
+- \( q \) is the proposal density
+
+4. **Decision Step**: Accept the candidate with probability \( \alpha \). Otherwise, stay at the current point.
+5. **Repeat**: Run many iterations to approximate the target distribution.
+
+---
 
 ## R Implementation
+
+We use several R programming features in this project:
+
+- Lists and data frames
+- Custom functions
+- Loops
+- Different data types: numeric, character, logical, list, dataframe
+- Output to screen
+- Reading/writing CSV files
+
 
 ```{r setup, include=FALSE}
 if (!require("pacman")) install.packages("pacman")
@@ -108,6 +132,13 @@ for (i in 1:iterations) {
 ```
 
 
+
+We now process the samples and compute key statistics.
+
+This shows the proportion of accepted proposals, which helps assess how well the algorithm is exploring the space. Acceptance rates between 20–50% are often ideal.
+
+These give us empirical probabilities for events under the target distribution, estimated using our Markov chain samples.
+
 ```{r}
 
 # Convert to dataframe
@@ -140,7 +171,7 @@ mean(post_burn$x * post_burn$y < 0)
 
 ```
 
-
+Finally we create a 2D density plot showing the density of x and y after burn in.This plot shows where the samples are most concentrated, which helps visualize the shape of the distribution we were targeting.
 
 ```{r}
 # 2D Density Plot
@@ -153,3 +184,18 @@ ggplot(post_burn, aes(x = x, y = y)) +
 
 ```
 
+## Conclusion 
+
+In this notebook, we successfully implemented the Metropolis-Hastings algorithm to simulate samples from a complex bivariate distribution. The project demonstrates:
+
+Core logic of MCMC
+
+Effective use of loops, lists, and data frames in R
+
+Saving and reloading data from CSV
+
+Meaningful statistical summaries
+
+Visualization of the resulting distribution
+
+This technique is broadly useful in Bayesian statistics and any scenario where direct sampling is difficult.
