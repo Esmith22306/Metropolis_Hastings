@@ -1,32 +1,42 @@
 # Overview
 
-{Important! Do not say in this section that this is college assignment. Talk about what you are trying to accomplish as a software engineer to further your learning.}
+{This project demonstrates my implementation of the Metropolis-Hastings algorithm using the R programming language. The Metropolis-Hastings algorithm is a key Markov Chain Monte Carlo (MCMC) technique used to sample from complex probability distributions.}
 
-{Provide a description of the software that you wrote to demonstrate the R language.}
+{I developed this software to deepen my understanding of probabilistic simulation techniques and explore how statistical methods can be implemented and visualized in R. The project focuses on generating samples from a bivariate distribution that cannot be sampled directly and visualizing the results with density plots.}
 
-{Describe your purpose for writing this software.}
+{Through this implementation, I’ve gained experience in R syntax, data manipulation with tidyverse, custom function design, and effective data visualization. The final output includes CSV file handling, plotting of 2D density estimates, and statistical summaries.}
 
-{Provide a link to your YouTube demonstration. It should be a 4-5 minute demo of the software running and a walkthrough of the code. Focus should be on sharing what you learned about the language syntax.}
 
 [Software Demo Video](http://youtube.link.goes.here)
 
 # Development Environment
 
-{Describe the tools that you used to develop the software}
+- **IDE**: RStudio  
+- **Language**: R  
+- **Libraries Used**:  
+  - `tidyverse` for data manipulation and plotting  
+  - `stats` for working with normal distributions  
+  - `base` for custom functions and loops  
+- **Git** for version control
+- **GitHub** for remote repository management
 
-{Describe the programming language that you used and any libraries.}
+  
 
 # Useful Websites
 
-{Make a list of websites that you found helpful in this project}
-
-- [Web Site Name](http://url.link.goes.here)
-- [Web Site Name](http://url.link.goes.here)
+- [RStudio Cheatsheets](https://posit.co/resources/cheatsheets/)
+- [Metropolis-Hastings Algorithm Explanation](https://chi-feng.github.io/mcmc-demo/app.html)
+- [Tidyverse Documentation](https://www.tidyverse.org/packages/)
+- [R for Data Science Book](https://r4ds.had.co.nz/)
 
 # Future Work
 
-{Make a list of things that you need to fix, improve, and add in the future.}
+- Add trace plots for each parameter to visualize convergence
 
-- Item 1
-- Item 2
-- Item 3
+- Explore different proposal variances to study their effect on acceptance rates
+
+- Extend the implementation to higher-dimensional target distributions
+
+- Include posterior diagnostics such as autocorrelation and effective sample size
+
+- Deploy a Shiny app interface for interactive MCMC exploration
